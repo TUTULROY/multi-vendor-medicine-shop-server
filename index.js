@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
 require('dotenv').config()
 const port = process.env.PORT || 5000;
@@ -31,7 +31,8 @@ async function run() {
 
     const userCollection = client.db("medicineShopDB").collection("users");
     const menuCollection = client.db("medicineShopDB").collection("menu");
-
+    const cartCollection = client.db("medicineShopDB").collection("carts");
+    const categoryCollection = client.db("medicineShopDB").collection("category");
    
     app.post('/users', async(req, res) =>{
         const user = req.body;
@@ -49,8 +50,31 @@ async function run() {
         res.send(result);
     })
 
+    app.get('/menu/:id', async(req, res) =>{
+        const id = req.params.id;
+        const query= {_id: new ObjectId(id)}
+        const result = await menuCollection.findOne(query);
+        res.send(result);
+    }),
 
-    
+    app.post('/carts', async(req, res)=>{
+        const cart = req.body;
+        const result = await cartCollection.insertOne(cart);
+        res.send(result);
+    })
+
+    app.get('/category', async (req, res)=>{
+        const result = await categoryCollection.find().toArray();
+        res.send(result);
+    })
+
+    app.post('/category', async(req, res)=>{
+        const category = req.body;
+        const result = await categoryCollection.insertOne(category);
+        res.send(result);
+    })
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");

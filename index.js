@@ -7,7 +7,14 @@ require('dotenv').config()
 const port = process.env.PORT || 5000;
 
 //middleware
-app.use(cors());
+app.use(cors({
+  origin:[
+      'http://localhost:5173',
+      'https://multi-vendor-medicine-shop.web.app'
+      
+  ],
+ 
+}));
 app.use(express.json());
 
 
@@ -60,6 +67,17 @@ async function run() {
             next();
            })
       }
+      const verifyAdmin = async ( req, res, next) =>{
+        const email = req.decoded.email;
+        const query = {email: email};
+        const user = await userCollection.find().toArray();
+        const isAdmin = user?.role === 'admin';
+        if(!isAdmin){
+          return res.status(403).send({message: 'forbidden access'});
+        }
+        next();
+      }
+  
    
     app.post('/users', async(req, res) =>{
         const user = req.body;
@@ -73,7 +91,7 @@ async function run() {
         res.send(result);
     });
 
-        app.get('/users/admin/:email', verifyToken, async(req, res) =>{
+        app.get('/users/admin/:email', async(req, res) =>{
       const email = req.params.email;
       if(email !== req.decoded.email){
         return res.status(403).send({message: 'forbidden access'})
@@ -84,8 +102,24 @@ async function run() {
       if(user){
         admin = user?.role === 'admin';
       }
+      // const admin = user ? user.role === 'admin' : false;
       res.send ({admin});
     })
+
+
+    //     app.get('/users/seller/:email', verifyToken, async(req, res) =>{
+    //   const email = req.params.email;
+    //   if(email !== req.decoded.email){
+    //     return res.status(403).send({message: 'forbidden access'})
+    //   }
+    //   const query = {email: email};
+    //   const user = await userCollection.findOne(query);
+    //   let seller = false;
+    //   if(user){
+    //     seller = user?.role === 'seller';
+    //   }
+    //   res.send ({seller});
+    // })
 
     app.get('/users', verifyToken, async (req, res)=>{
         console.log(req.headers);
@@ -95,6 +129,7 @@ async function run() {
 
     app.patch('/users/admin/:id', async (req, res) =>{
         const id = req.params.id;
+        
         const filter = {_id: new ObjectId(id)};
         const updatedDoc = {
           $set:{
@@ -104,7 +139,7 @@ async function run() {
         const result= await userCollection.updateOne(filter, updatedDoc);
         res.send(result);
       })
-      app.patch('/users/both/:id', async (req, res) =>{
+      app.patch('/users/admin/:id', async (req, res) =>{
         const id = req.params.id;
         const { role } = req.body;
         const filter = {_id: new ObjectId(id)};
@@ -119,7 +154,7 @@ async function run() {
 
 
 
-    app.delete('/users/:id', async (req, res) =>{
+    app.delete('/users/:id',verifyToken, verifyAdmin, async (req, res) =>{
         const id = req.params.id;
         const query = {_id: new ObjectId(id)}
         const result = await userCollection.deleteOne(query);
